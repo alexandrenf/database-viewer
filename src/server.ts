@@ -28,22 +28,31 @@ app.post('/backup', async (req, res) => {
 
 // Start the server
 const port = env.PORT;
-app.listen(port, () => {
+app.listen(port, async () => {
   logger.info(`Server running on port ${port}`);
-});
-
-// Schedule automated backups
-const backupJob = new CronJob(
-  env.BACKUP_SCHEDULE,
-  async () => {
-    logger.info('Starting scheduled backup');
+  
+  // Run initial backup on server start
+  try {
+    logger.info('Running initial backup on server start');
     const result = await backupService.performBackup();
-    logger.info('Scheduled backup completed', result);
-  },
-  null, // onComplete
-  false, // start
-  'UTC' // timeZone
-);
+    logger.info('Initial backup completed', result);
+  } catch (error) {
+    logger.error('Initial backup failed:', error);
+  }
 
-backupJob.start();
-logger.info(`Scheduled backup job started with cron expression: ${env.BACKUP_SCHEDULE}`); 
+  // Schedule automated backups
+  const backupJob = new CronJob(
+    env.BACKUP_SCHEDULE,
+    async () => {
+      logger.info('Starting scheduled backup');
+      const result = await backupService.performBackup();
+      logger.info('Scheduled backup completed', result);
+    },
+    null, // onComplete
+    false, // start
+    'UTC' // timeZone
+  );
+
+  backupJob.start();
+  logger.info(`Scheduled backup job started with cron expression: ${env.BACKUP_SCHEDULE}`);
+}); 
