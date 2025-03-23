@@ -22,22 +22,24 @@ export class BackupService {
 
   constructor() {
     this.backupPath = '/tmp/backup.sql.gz';
-    this.psqlPath = '/usr/local/bin/psql';
-    this.pgDumpPath = '/usr/local/bin/pg_dump';
+    this.psqlPath = '/usr/bin/psql';
+    this.pgDumpPath = '/usr/bin/pg_dump';
   }
 
   private async verifyTools(): Promise<void> {
     try {
       // Check psql
-      await execAsync(`ls -l ${this.psqlPath}`);
+      const { stdout: psqlPath } = await execAsync('which psql');
+      this.psqlPath = psqlPath.trim();
       logger.info('psql found at:', this.psqlPath);
       
       // Check pg_dump
-      await execAsync(`ls -l ${this.pgDumpPath}`);
+      const { stdout: pgDumpPath } = await execAsync('which pg_dump');
+      this.pgDumpPath = pgDumpPath.trim();
       logger.info('pg_dump found at:', this.pgDumpPath);
     } catch (error) {
       logger.error('PostgreSQL tools not found:', error);
-      throw new Error('PostgreSQL tools not found at expected locations');
+      throw new Error('PostgreSQL tools not found in PATH');
     }
   }
 
