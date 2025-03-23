@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  backup-service:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - SOURCE_DATABASE_URL=postgresql://postgres:postgres@source-postgres:5432/postgres
+      - TARGET_DATABASE_URL=postgresql://postgres:postgres@target-postgres:5432/postgres
+      - BACKUP_RETENTION_DAYS=7
+      - BACKUP_SCHEDULE="*/30 * * * *"
+      - NODE_ENV=development
+    depends_on:
+      - source-postgres
+      - target-postgres
+
+  source-postgres:
+    image: postgres:15
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - source_postgres_data:/var/lib/postgresql/data
+
+  target-postgres:
+    image: postgres:15
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=postgres
+    ports:
+      - "5433:5432"
+    volumes:
+      - target_postgres_data:/var/lib/postgresql/data
+
+volumes:
+  source_postgres_data:
+  target_postgres_data: 
