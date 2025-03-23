@@ -17,9 +17,26 @@ interface BackupResult {
 
 export class BackupService {
   private backupPath: string;
+  private psqlPath: string;
 
   constructor() {
     this.backupPath = '/tmp/backup.sql.gz';
+    this.psqlPath = '/usr/bin/psql';
+  }
+
+  private async verifyPsql(): Promise<void> {
+    try {
+      await execAsync(`which psql`);
+      logger.info('psql is available in PATH');
+    } catch (error) {
+      logger.error('psql not found in PATH, trying to use full path');
+      try {
+        await execAsync(`ls -l ${this.psqlPath}`);
+        logger.info('Found psql at full path');
+      } catch (error) {
+        throw new Error('psql not found in PATH or at full path');
+      }
+    }
   }
 
   private async executeBackup(): Promise<void> {
@@ -31,7 +48,8 @@ export class BackupService {
 
   private async restoreToTarget(): Promise<void> {
     // Restore backup to target database
-    const restoreCommand = `gunzip -c ${this.backupPath} | psql "${env.TARGET_DATABASE_URL}"`;
+    const restoreCommand = `gunzip -c ${this.backupPath} | ${this.psqlPath} "${env.TARGET_DATABASE_URL}"`;
+    logger.info('Executing restore command:', restoreCommand);
     await execAsync(restoreCommand);
     logger.info('Backup restored to target database successfully');
   }
@@ -39,6 +57,7 @@ export class BackupService {
   public async performBackup(): Promise<BackupResult> {
     const startTime = Date.now();
     try {
+      await this.verifyPsql();
       await this.executeBackup();
       await this.restoreToTarget();
 
