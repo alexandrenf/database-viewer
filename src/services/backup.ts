@@ -18,30 +18,33 @@ interface BackupResult {
 export class BackupService {
   private backupPath: string;
   private psqlPath: string;
+  private pgDumpPath: string;
 
   constructor() {
     this.backupPath = '/tmp/backup.sql.gz';
-    this.psqlPath = '/usr/bin/psql';
+    this.psqlPath = '/usr/local/bin/psql';
+    this.pgDumpPath = '/usr/local/bin/pg_dump';
   }
 
-  private async verifyPsql(): Promise<void> {
+  private async verifyTools(): Promise<void> {
     try {
-      await execAsync(`which psql`);
-      logger.info('psql is available in PATH');
+      // Check psql
+      await execAsync(`ls -l ${this.psqlPath}`);
+      logger.info('psql found at:', this.psqlPath);
+      
+      // Check pg_dump
+      await execAsync(`ls -l ${this.pgDumpPath}`);
+      logger.info('pg_dump found at:', this.pgDumpPath);
     } catch (error) {
-      logger.error('psql not found in PATH, trying to use full path');
-      try {
-        await execAsync(`ls -l ${this.psqlPath}`);
-        logger.info('Found psql at full path');
-      } catch (error) {
-        throw new Error('psql not found in PATH or at full path');
-      }
+      logger.error('PostgreSQL tools not found:', error);
+      throw new Error('PostgreSQL tools not found at expected locations');
     }
   }
 
   private async executeBackup(): Promise<void> {
     // Create backup from source database
-    const backupCommand = `pg_dump "${env.SOURCE_DATABASE_URL}" | gzip > ${this.backupPath}`;
+    const backupCommand = `${this.pgDumpPath} "${env.SOURCE_DATABASE_URL}" | gzip > ${this.backupPath}`;
+    logger.info('Executing backup command:', backupCommand);
     await execAsync(backupCommand);
     logger.info('Backup created successfully');
   }
@@ -57,7 +60,7 @@ export class BackupService {
   public async performBackup(): Promise<BackupResult> {
     const startTime = Date.now();
     try {
-      await this.verifyPsql();
+      await this.verifyTools();
       await this.executeBackup();
       await this.restoreToTarget();
 
