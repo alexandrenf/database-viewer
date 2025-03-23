@@ -20,6 +20,12 @@ COPY . .
 # Build TypeScript
 RUN npm run build
 
+# Create necessary directories
+RUN mkdir -p dist
+
+# Copy compiled files to dist directory
+RUN cp -r src/* dist/
+
 # Expose port
 EXPOSE 3000
 
